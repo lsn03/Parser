@@ -13,8 +13,12 @@ namespace Parser
         static void Main( string[] args )
         {
             string url = "https://www.chitai-gorod.ru/product/vtoromu-igroku-prigotovitsya-2951034";
-            
-            DoParse( url );
+
+            Parser parser = new Parser(url);
+            Console.WriteLine(parser.GetResult());
+
+
+            //DoParse( url );
         }
         static void DoParse(string url )
         {
