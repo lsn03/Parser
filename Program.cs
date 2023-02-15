@@ -12,7 +12,7 @@ namespace Parser
     {
         static void Main( string[] args )
         {
-            string url = "https://www.chitai-gorod.ru/product/vtoromu-igroku-prigotovitsya-2951034";
+            string url = "http://www.belygorod.ru/catalog/25717/";
 
             Parser parser = new Parser(url);
             Console.WriteLine(parser.GetResult());

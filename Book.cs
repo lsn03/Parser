@@ -9,16 +9,16 @@ namespace Parser
     class Book
     {
         public string author { get; set; }
-        public string name;
-        public string description;
-        public string price;
-        public string remainder;
-        public string sourceName;
-        public string image;
-        public string genre;
-        public string numberOfPage;
-        public string publisherName;
-        public string isbn;
+        public string name { get; set; }
+        public string description { get; set; }
+        public string price { get; set; }
+        public string remainder { get; set; }
+        public string sourceName { get; set; }
+        public string image { get; set; }
+        public string genre { get; set; }
+        public string numberOfPages { get; set; }
+        public string publisherName { get; set; }
+        public string isbn { get; set; }
 
     }
 }

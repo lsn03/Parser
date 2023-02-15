@@ -22,11 +22,22 @@ namespace Parser
             this._url = url;
             _document = GetDocument();
         }
+        private IDocument GetDocument()
+        {
+            var config = Configuration.Default.WithDefaultLoader();
+            var context = BrowsingContext.New(config);
+            return context.OpenAsync( _url ).Result;
+        }
+
         public string GetResult()
         {
             Book book = new Book()
             {
-                author = GetAuthor()
+                author = GetAuthor(),
+                name = GetName(),
+                isbn = GetISBN(),
+                price = GetPrice(),
+                numberOfPages = GetNumberOfPages(),
             };
             var options = new JsonSerializerOptions
             {
@@ -40,21 +51,39 @@ namespace Parser
         }
         private string GetAuthor()
         {
-            var textWitHResultSearchElements = _document.GetElementsByClassName("product-detail-title__author");
-            return textWitHResultSearchElements[0].TextContent.Trim( new char[] { ' ', '\n' } );
+            var textWitHResultSearchElements = _document.GetElementsByClassName("green");
+            return textWitHResultSearchElements[1].TextContent;
         }
 
-        private string GetName( IDocument doc )
+        private string GetName()
         {
-            var textWitHResultSearchElements = doc.GetElementsByClassName("product-detail-title__header");
+            var textWitHResultSearchElements = _document.GetElementsByClassName("pm-c-e-name");
             return textWitHResultSearchElements[0].TextContent;
         }
-
-        private IDocument GetDocument()
+        private string GetISBN()
         {
-            var config = Configuration.Default.WithDefaultLoader();
-            var context = BrowsingContext.New(config);
-            return context.OpenAsync( _url ).Result;
+            var textWitHResultSearchElements = _document.GetElementsByTagName("td");
+            string res = textWitHResultSearchElements[43].TextContent;
+            res = res.Trim(new char[] {'\n','\t',' ','-' } );
+            var ISBN = res.Remove(0,9);
+            return ISBN;
         }
+        private string GetPrice()
+        {
+            var textWitHResultSearchElements = _document.GetElementsByClassName("catalog-price");
+            string priceContent =  textWitHResultSearchElements[0].TextContent;
+            string[] res = priceContent.Split(' ');
+            return res[0];
+            
+        }
+        private string GetNumberOfPages()
+        {
+            var textWitHResultSearchElements = _document.GetElementsByTagName("td");
+            string res = textWitHResultSearchElements[43].TextContent;
+            res = res.Trim( new char[] { '\n', '\t', ' ', '-' } );
+            var numberOfPages = res.Remove(0,9);
+            return numberOfPages;
+        }
+
     }
 }
