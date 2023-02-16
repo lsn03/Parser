@@ -13,8 +13,8 @@ namespace Parser
 		public string description { get; set; }
 		public string price { get; set; }
 		public string sourceName { get; set; }
-		public string image { get; set; }
-		public string genre { get; set; }
+		//public string image { get; set; }
+		//public string genre { get; set; }
 		public string numberOfPages { get; set; }
 		public string publisherName { get; set; }
 		public string isbn { get; set; }

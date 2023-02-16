@@ -44,7 +44,7 @@ namespace Parser
             }
 		}
 
-		public string GetResult()
+		public Book GetResult()
 		{
 			Book book = new Book()
 			{
@@ -68,7 +68,7 @@ namespace Parser
 			string res= JsonSerializer.Serialize(book,options);
 			
 			
-			return res;
+			return book;
 		}
 
 
@@ -132,8 +132,9 @@ namespace Parser
 
 				string res = textWitHResultSearchElements[0].TextContent.Trim(new char[]{'\n',' ' } );
 				var r = res.Split("Описание\n");
-				
-				return r[1].Trim(' ');
+				string result = r[1].Trim(' ');
+				result = result.Replace( '\u00A0', ' ' );
+				return result.Trim(' ');
             }catch(Exception ex )
             {
 				return ex.Message;
