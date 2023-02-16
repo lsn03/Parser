@@ -3,273 +3,146 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json;
 using AngleSharp;
 using AngleSharp.Dom;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
 
 namespace Parser
 {
-	class Parser
-	{
-		private string _url;
-		private IDocument _document;
-		
-		private string _author;
-
-		public Parser(string url )
-		{
-			this._url = url;
-			_document = GetDocument();
-            if ( _document == null )
-            {
-				Console.WriteLine( "Error to parse this url: " + url );
-				
-				return;
-            }
-		}
-		private IDocument GetDocument()
-		{
-			try
-			{
-				var config = Configuration.Default.WithDefaultLoader();
-				var context = BrowsingContext.New(config);
-				return context.OpenAsync( _url ).Result;
-			}
-			catch(Exception ex )
-            {
-				Console.WriteLine( ex.Message );
-				return null;
-            }
-		}
-
-		public Book GetResult()
-		{
-			Book book = new Book()
-			{
-				author = GetAuthor(),
-				name = GetName(),
-				description = GetDescription(),
-				price = GetPrice(),
-				sourceName = GetSourceName(),
-				//image = GetImage(),
-				//genre = GetGenre(),
-				numberOfPages = GetNumberOfPages(),
-				publisherName = GetPublisherName(),
-				isbn = GetISBN(),
-			};
-			var options = new JsonSerializerOptions
-			{
-				Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Create(System.Text.Unicode.UnicodeRanges.All,System.Text.Unicode.UnicodeRanges.Cyrillic)
-				
-			};
-
-			string res= JsonSerializer.Serialize(book,options);
-			
-			
-			return book;
-		}
-
-
-		private string GetAuthor()
-		{
-			try
-			{
-				var textWitHResultSearchElements = _document.GetElementsByTagName("td");
-				for(int i = 0; i < textWitHResultSearchElements.Length;i++ )
-                {
-                    if ( textWitHResultSearchElements[i].TextContent.Contains( "Автор" ) )
-                    {
-						string res = textWitHResultSearchElements[i + 1].TextContent.Trim( new char[] { '\t', '\n' } );
-						res = res.Replace( '\n',' ' );
-						res = res.Trim( ' ' );
-						_author = res;
-						return res;
-					}
-                }
-				_author = null;
-				return null;
-			}
-			catch ( Exception ex )
-			{
-				return ex.Message;
-			}
-		}
-
-		private string GetName()
-		{
-			try
-			{
-				var textWitHResultSearchElements = _document.GetElementsByClassName("title");
-				
-				for(int i = 0;i< textWitHResultSearchElements.Length;i++ )
-                {
-                    if ( textWitHResultSearchElements[i].TextContent.Contains( _author ) )
-                    {
-						string[] res = textWitHResultSearchElements[i].TextContent.Split(_author+" ");
-						return res[1];
-					}
-                }
-				
-				return null;
-			
-			
-			}
-			catch ( Exception ex )
-			{
-				return ex.Message;
-			}
-		}
-		private string GetDescription()
-		{
-
+    class Parser
+    {
+        private string url;
+        private List<Book> books = new();
+        private List<string> links;
+        private IDocument document;
+        public Parser( string url )
+        {
+            this.url = url;
+            this.document = GetDocument();
+        }
+        private IDocument GetDocument()
+        {
             try
             {
-				var textWitHResultSearchElements = _document.GetElementsByClassName("description editor-content");
+                var config = Configuration.Default.WithDefaultLoader();
+                var context = BrowsingContext.New(config);
+                return context.OpenAsync( this.url ).Result;
+            }
+            catch ( Exception ex )
+            {
+                Console.WriteLine( ex.Message );
+                return null;
+            }
+        }
+        private IDocument GetDocument(string url)
+        {
+            try
+            {
+                var config = Configuration.Default.WithDefaultLoader();
+                var context = BrowsingContext.New(config);
+                return context.OpenAsync( url ).Result;
+            }
+            catch ( Exception ex )
+            {
+                Console.WriteLine( ex.Message );
+                return null;
+            }
+        }
+        public string GetResultJson()
+        {
+            DoParse();
+            var options = new JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                WriteIndented = true,
 
-				//int index = textWitHResultSearchElements[0].TextContent.IndexOf("<span>");
+            };
+            string resultJson = JsonSerializer.Serialize(books,options);
+            return resultJson;
+        }
+        private void DoParse()
+        {
+            var textWithResultSearchElements = document.GetElementsByTagName("a");
+            List<string> attributes = new();
+            for(int i = 10; i <= 67;i ++ )
+            {
+                attributes.Add( textWithResultSearchElements[i].GetAttribute( "href" ) );
+            }
+            //textWithResultSearchElements[10].GetAttribute( "href" );
+            //textWithResultSearchElements[67].GetAttribute( "href" );
+            for(int i = 0; i< attributes.Count;i++ )
+            {
+                OpenPage( url + attributes[i] );
+                
+            }
+        }
+        private void OpenPage(string url)
+        {
+            try
+            {
+                IDocument doc = GetDocument(url);
+                var textWithResultSearchElements = doc.GetElementsByClassName("pagination fr");
+                int maxCountOfPages = 1,currentPage = 1;
+                string countString = textWithResultSearchElements[0].TextContent;
+                var res = countString.Split(" ");
+                countString = res[res.Length - 7];
+                countString = countString.Trim( '\n' );
+                maxCountOfPages = int.Parse( countString );
 
-				string res = textWitHResultSearchElements[0].TextContent.Trim(new char[]{'\n',' ' } );
-				var r = res.Split("Описание\n");
-				string result = r[1].Trim(' ');
-				result = result.Replace( '\u00A0', ' ' );
-				return result.Trim(' ');
+                for ( currentPage = 1; currentPage <= maxCountOfPages; currentPage++ )
+                {
+                    IDocument LocalDoc;
+                    Console.WriteLine(url+"\t\t"+ currentPage );
+                    if ( currentPage == 1 )
+                    {
+                        LocalDoc = doc;
+
+                        var resultGetElementsByTagA = LocalDoc.GetElementsByTagName("a");
+
+                        int start = 72;
+                        int end =resultGetElementsByTagA.Length-162;
+
+                        for ( int i = start; i < end; i += 2 )
+                        {
+                            string currentURL = this.url;
+                            currentURL += resultGetElementsByTagA[i].GetAttribute( "href" );
+                            ParseBook parserBook = new(currentURL);
+                            // Console.WriteLine( i + "\t" + currentURL );
+                            Book book = parserBook.GetBook();
+                            books.Add( book );
+
+
+                        }
+                    }
+                    else
+                    {
+                        string urlPage = url + "?page=" + currentPage;
+                       // Console.WriteLine( urlPage );
+                        LocalDoc = GetDocument( urlPage );
+                        var resultGetElementsByTagA = LocalDoc.GetElementsByTagName("a");
+
+                        int start = 72+currentPage;
+                        int end =resultGetElementsByTagA.Length-162;
+                        for ( int i = start; i < end; i += 2 )
+                        {
+                            string currentURL = this.url;
+                            currentURL += resultGetElementsByTagA[i].GetAttribute( "href" );
+                            ParseBook parserBook = new(currentURL);
+                           // Console.WriteLine( i + "\t" + currentURL );
+                            Book book = parserBook.GetBook();
+                            books.Add( book );
+
+
+                        }
+
+                    }
+
+                }
             }catch(Exception ex )
             {
-				return ex.Message;
+                Console.WriteLine( url+"\t\n\n"+ ex.Message );
             }
-		}
-		private string GetPrice()
-		{
-			try
-			{
-				var textWitHResultSearchElements = _document.GetElementById("price-field");
-				string priceContent =  textWitHResultSearchElements.TextContent;
-				string res = priceContent.Remove(priceContent.Length-4,4);
-				return res;
-			}
-			catch ( Exception ex )
-			{
-				return ex.Message;
-			}
-		}
-		private string GetSourceName()
-		{
-			try
-			{
-				var resArray = _url.Split('/');
 
-				return resArray[2];
-			}
-			catch ( Exception ex )
-			{
-				return ex.Message;
-			}
-		}
-		private string GetImage()
-		{
-			try
-			{
-				return "";
-			}
-			catch ( Exception ex )
-			{
-				return ex.Message;
-			}
-		}
-
-		private string GetGenre()
-		{
-			try
-			{
-				var textWitHResultSearchElements = _document.GetElementsByClassName("breadcrumbs center-align");
-				
-				return textWitHResultSearchElements[0].TextContent;
-
-				//"breadcrumbs center-align";
-			}
-			catch ( Exception ex )
-			{
-				return ex.Message;
-			}
-		}
-		
-		private string GetNumberOfPages()
-		{
-			try
-			{
-				var textWitHResultSearchElements = _document.GetElementsByTagName("td");
-				for ( int i = 0; i < textWitHResultSearchElements.Length; i++ )
-				{
-					if ( textWitHResultSearchElements[i].TextContent.Contains( "Страниц в книге:" ) )
-					{
-						string res = textWitHResultSearchElements[i + 1].TextContent.Trim( new char[] { '\t', '\n' } );
-						res = res.Replace( '\n', ' ' );
-						res = res.Trim( ' ' );
-						
-						return res;
-					}
-				}
-				
-				return null;
-			}
-			catch(Exception ex )
-            {
-				return ex.Message;
-            }
-		}
-
-		private string GetPublisherName()
-		{
-			try
-			{
-				var textWitHResultSearchElements = _document.GetElementsByTagName("td");
-				for ( int i = 0; i < textWitHResultSearchElements.Length; i++ )
-				{
-					if ( textWitHResultSearchElements[i].TextContent.Contains( "Издательство" ) )
-					{
-						string res = textWitHResultSearchElements[i + 1].TextContent.Trim( new char[] { '\t', '\n' } );
-						res = res.Replace( '\n', ' ' );
-						res = res.Trim( ' ' );
-
-						return res;
-					}
-				}
-
-				return null;
-				
-			}
-			catch ( Exception ex )
-			{
-				return ex.Message;
-			}
-		}
-
-		private string GetISBN()
-		{
-			try
-			{
-				var textWitHResultSearchElements = _document.GetElementsByTagName("td");
-				for ( int i = 0; i < textWitHResultSearchElements.Length; i++ )
-				{
-					if ( textWitHResultSearchElements[i].TextContent.Contains( "ISBN" ) )
-					{
-						string res = textWitHResultSearchElements[i + 1].TextContent.Trim( new char[] { '\t', '\n' } );
-						res = res.Replace( '\n', ' ' );
-						res = res.Trim( ' ' );
-
-						return res;
-					}
-				}
-
-				return null;
-			}
-			catch ( Exception ex )
-			{
-				return ex.Message;
-			}
-		}
-
-	}
+        }
+    }
 }
