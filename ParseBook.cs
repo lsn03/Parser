@@ -133,7 +133,8 @@ namespace Parser
 				var r = res.Split("Описание\n");
 				string result = r[1].Trim(' ');
 				result = result.Replace( '\u00A0', ' ' );
-				return result.Trim(' ');
+				result = result.Trim( new char[] { ' ', '\n' } );
+				return result;
             }catch(Exception ex )
             {
 				return null;
